@@ -1,16 +1,14 @@
-export type Difficulty = 'easy' | 'medium' | 'hard';
-
 export interface RoseFormData {
   name: string;
   phoneNumber: string;
-  difficulty: Difficulty;
+  difficulty: number;
 }
 
 export interface GameData {
   puzzle: number[][];
   name: string;
   phoneNumber: string;
-  difficulty: Difficulty;
+  difficulty: number;
   hash: string;
 }
 
@@ -19,13 +17,13 @@ export interface GameSubmission {
   solution: number[][];
   name: string;
   phoneNumber: string;
-  difficulty: Difficulty;
+  difficulty: number;
   hash: string;
 }
 
 export interface SignedRoseData {
   name: string;
   phoneNumber: string;
-  difficulty: Difficulty;
+  difficulty:  number;
   signature: string;
 }

@@ -1,0 +1,1 @@
+export const SECRET_KEY: String = "8dI3U1mT0b2A"

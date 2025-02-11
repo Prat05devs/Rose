@@ -2,10 +2,16 @@ import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { SudokuBoard } from '../components/SudokuBoard';
 import type { GameData } from '../types';
+import sudoku from "../utils/sudoku.js";
+
+import hmacSHA512 from 'crypto-js/hmac-sha256';
+import Base64 from 'crypto-js/enc-base64';
+import { SECRET_KEY } from '../utils/constant.js';
 
 export function Game() {
   const location = useLocation();
   const navigate = useNavigate();
+  const x = sudoku()
   const [puzzle, setPuzzle] = React.useState<number[][]>(
     Array(9).fill(null).map(() => Array(9).fill(0))
   );
@@ -18,25 +24,95 @@ export function Game() {
         puzzle: Array(9).fill(null).map(() => Array(9).fill(0)),
         name: location.state?.name || '',
         phoneNumber: location.state?.phoneNumber || '',
-        difficulty: location.state?.difficulty || 'easy',
+        difficulty: location.state?.difficulty || 1,
         hash: 'mock-hash'
       });
     };
     mockFetch();
   }, [location.state]);
 
+  React.useEffect(() => {
+    async function name() {
+      let difficulty = 81 - (8 * (gameData?.difficulty ?? 1)); 
+      let p = x.generate(difficulty, true)
+      let newpuzzel = Array(9).fill(null).map(() => Array(9).fill(0)) 
+      for (let i = 0; i < p.length; i++) {
+        if (p[i] != '.') {
+          newpuzzel[Math.floor(i/9)][i%9] = parseInt(p[i])
+        }
+        
+      }
+      setPuzzle(newpuzzel)
+    }
+    name()
+  }, [gameData]);
+
+  function isValidSudokuGrid(sudokuStr) {
+    // Check if the input is exactly 81 characters long
+    if (sudokuStr.length !== 81) return false;
+
+    // Check if the string contains only digits 1-9
+    if (!/^[1-9]{81}$/.test(sudokuStr)) return false;
+
+    const grid = [];
+    for (let i = 0; i < 9; i++) {
+        grid.push(sudokuStr.slice(i * 9, (i + 1) * 9).split("").map(Number));
+    }
+
+    return isValidSudoku(grid);
+}
+
+function isValidSudoku(grid) {
+    // Helper function to check if an array contains unique numbers 1-9
+    function hasUniqueNumbers(arr) {
+        return new Set(arr).size === 9;
+    }
+
+    // Check rows
+    for (let row of grid) {
+        if (!hasUniqueNumbers(row)) return false;
+    }
+
+    // Check columns
+    for (let col = 0; col < 9; col++) {
+        let column = grid.map(row => row[col]);
+        if (!hasUniqueNumbers(column)) return false;
+    }
+
+    // Check 3x3 subgrids
+    for (let row = 0; row < 9; row += 3) {
+        for (let col = 0; col < 9; col += 3) {
+            let subgrid = [];
+            for (let r = 0; r < 3; r++) {
+                for (let c = 0; c < 3; c++) {
+                    subgrid.push(grid[row + r][col + c]);
+                }
+            }
+            if (!hasUniqueNumbers(subgrid)) return false;
+        }
+    }
+
+    return true;
+}
+  
+
   const handleSubmit = async () => {
     // TODO: Implement solution verification
-    navigate('/view?hash=mock-signature');
-  };
-
-  const getThornsCount = (difficulty: string): number => {
-    switch (difficulty) {
-      case 'hard': return 3;
-      case 'medium': return 2;
-      case 'easy': return 1;
-      default: return 1;
+    if(isValidSudoku(puzzle)){
+      const data = {
+        "name": gameData?.name ?? "",
+        "phoneNumber": gameData?.phoneNumber ?? "",
+        "difficulty": gameData?.difficulty ?? "",
+      }
+      const body = JSON.stringify(data);
+      const signature = Base64.stringify(hmacSHA512(body, SECRET_KEY));
+      const body64 = btoa(body)
+      const hash = encodeURIComponent(body64 + '.' + signature)
+      navigate('/view?hash='+ hash);
+    } else {
+      console.log('Submitted solution:', puzzle);
     }
+    
   };
 
   return (
@@ -52,7 +128,7 @@ export function Game() {
               <div className="text-center space-y-2">
                 <p className="text-gray-600">Creating a rose for: {gameData.name}</p>
                 <p className="text-gray-600">
-                  Difficulty: {gameData.difficulty} ({getThornsCount(gameData.difficulty)} {getThornsCount(gameData.difficulty) === 1 ? 'thorn' : 'thorns'})
+                  Difficulty: {gameData.difficulty} {gameData.difficulty === 1 ? 'thorn' : 'thorns'}
                 </p>
               </div>
               
